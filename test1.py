@@ -3,7 +3,7 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 
 # Kaggleの「Mall Customers」データセットを読み込む
-file_path = 'path_to_your_file/mall_customers.csv'
+file_path = 'C:\\Users\\FujimotoD\\OneDrive\\documents\\intern\\ExplanableAI\\Mall_Customers.csv'
 data = pd.read_csv(file_path)
 
 # 必要な列を選択する
