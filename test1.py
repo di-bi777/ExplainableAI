@@ -5,14 +5,16 @@ import numpy as np
 import queue
 from graphviz import Digraph
 from sklearn.tree import export_graphviz,DecisionTreeClassifier
+from collections import Counter
 
 class TreeNode:
     """決定木の各ノード"""
-    def __init__(self, cluster=None, left=None, right=None,condition=None):
+    def __init__(self, cluster=None, left=None, right=None, condition=None, labels = None):
         self.cluster = cluster
         self.left = left
         self.right = right 
         self.condition = (0,0) #(i,threshold) x_i <= threshold  or  x_i > threshold 
+        self.labels = labels
 
 def minimum_center(i,labels,centers):
     """指定された特徴量iに対するクラスタ中心の最小値を計算"""
@@ -107,10 +109,12 @@ def build_tree(X,labels,centers,df):
     X,labels = delete_mistakes_data(X,labels,centers,i,threshold)
     left_data,left_labels,right_data,right_labels = make_next_data(X,labels,i,threshold)
     
+    #特徴量を文字列に変換
     column_names = df.columns.tolist()
     i = column_names[i]
     
     node.condition = (i,threshold)
+    node.labels = labels
     node.left = build_tree(left_data,left_labels,centers,df)
     node.right = build_tree(right_data,right_labels,centers,df)
     
@@ -124,20 +128,25 @@ def make_tree(root,n_clusters):
     
     q = queue.Queue()
     q.put(root)
+    
     if(root.right.cluster != None):
         G.node(str(0),"{} > {}".format(root.condition[0],root.condition[1]))
     else:
         G.node(str(0),"{} <= {}".format(root.condition[0],root.condition[1]))
     i=1
-    
+    j = 0
     while not q.empty():
         root = q.get()
+        print(j)
+        print(root.left.cluster)
+        print(root.right.cluster)
+        j += 1
 
         if root.left.cluster != None and root.right.cluster != None:
             G.node(str(i), str(root.left.cluster))
             G.edge(str(i-1), str(i),label='True')
             G.node(str(i+1), str(root.right.cluster))
-            G.edge(str(i-1), str(i+1),label='False')      
+            G.edge(str(i-1), str(i+1),label='False')    
         elif root.right.cluster != None:
             G.node(str(i), str(root.right.cluster))
             G.edge(str(i-1), str(i),label='True')
@@ -153,12 +162,14 @@ def make_tree(root,n_clusters):
             i+=2
     return G
 
+def assign_leaf_to_cluster(node):
+    counter = Counter(node.labels)
+    most_common_label = counter.most_common(1)[0][0]
+    return most_common_label
+
 def display_tree(G):
     """グラフを表示"""
     G.render('tree', view=True)
-    
-def display_node(G):
-    G.node(str(0),"X_{} > {}".format(root.condition[0],root.condition[1]))
 
 # Kaggleの「Mall Customers」データセットを読み込む
 file_path = 'C:\\Users\\FujimotoD\\OneDrive\\documents\\intern\\ExplanableAI\\Mall_Customers.csv'
@@ -176,6 +187,7 @@ data_array = np.array([data['Genre'].tolist(),
                        data['Annual Income (k$)'].tolist(),
                        data['Spending Score (1-100)'].tolist()
                        ], np.int32)
+
 data_array = data_array.T
 
 # KMeansクラスタリングを適用する
