@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import numpy as np
-import queue,graphviz
+import queue
 from graphviz import Digraph
 from sklearn.tree import export_graphviz,DecisionTreeClassifier
 
@@ -89,17 +89,17 @@ def get_best_splits(X,l,r,labels,centers):
     print("num of mistakes at this node => {}".format(bests_split['mistake']))
     return bests_split['coordinate'],bests_split['threshold']
 
-def build_tree(X,labels,centers):
+def build_tree(X,labels,centers,df):
     """再帰的に決定木を構築"""
     node = TreeNode()
     l=[]
     r=[]
     
-    if(len(np.unique(labels))==1):
+    if(len(np.unique(labels))==1):#クラスターが一つの時
         node.cluster = labels[0]
         return node
 
-    for i in range(X.shape[1]):
+    for i in range(X.shape[1]):#各特徴量についてループ
         l.append(minimum_center(i,labels,centers))
         r.append(maximum_center(i,labels,centers))
 
@@ -107,9 +107,12 @@ def build_tree(X,labels,centers):
     X,labels = delete_mistakes_data(X,labels,centers,i,threshold)
     left_data,left_labels,right_data,right_labels = make_next_data(X,labels,i,threshold)
     
+    column_names = df.columns.tolist()
+    i = column_names[i]
+    
     node.condition = (i,threshold)
-    node.left = build_tree(left_data,left_labels,centers)
-    node.right = build_tree(right_data,right_labels,centers)
+    node.left = build_tree(left_data,left_labels,centers,df)
+    node.right = build_tree(right_data,right_labels,centers,df)
     
     return node
 
@@ -122,10 +125,11 @@ def make_tree(root,n_clusters):
     q = queue.Queue()
     q.put(root)
     if(root.right.cluster != None):
-        G.node(str(0),"X_{} > {}".format(root.condition[0],root.condition[1]))
+        G.node(str(0),"{} > {}".format(root.condition[0],root.condition[1]))
     else:
-        G.node(str(0),"X_{} <= {}".format(root.condition[0],root.condition[1]))
+        G.node(str(0),"{} <= {}".format(root.condition[0],root.condition[1]))
     i=1
+    
     while not q.empty():
         root = q.get()
 
@@ -137,13 +141,13 @@ def make_tree(root,n_clusters):
         elif root.right.cluster != None:
             G.node(str(i), str(root.right.cluster))
             G.edge(str(i-1), str(i),label='True')
-            G.node(str(i+1),"X_{} <= {}".format(root.left.condition[0],root.left.condition[1]))
+            G.node(str(i+1),"{} <= {}".format(root.left.condition[0],root.left.condition[1]))
             G.edge(str(i-1), str(i+1),label='False')
             q.put(root.left)
         else:
             G.node(str(i), str(root.left.cluster))
             G.edge(str(i-1), str(i),label='True')
-            G.node(str(i+1),"X_{} <= {}".format(root.right.condition[0],root.right.condition[1]))
+            G.node(str(i+1),"{} <= {}".format(root.right.condition[0],root.right.condition[1]))
             G.edge(str(i-1), str(i+1),label='False')
             q.put(root.right)       
             i+=2
@@ -152,6 +156,9 @@ def make_tree(root,n_clusters):
 def display_tree(G):
     """グラフを表示"""
     G.render('tree', view=True)
+    
+def display_node(G):
+    G.node(str(0),"X_{} > {}".format(root.condition[0],root.condition[1]))
 
 # Kaggleの「Mall Customers」データセットを読み込む
 file_path = 'C:\\Users\\FujimotoD\\OneDrive\\documents\\intern\\ExplanableAI\\Mall_Customers.csv'
@@ -177,7 +184,7 @@ kmeans_model = KMeans(n_clusters=5, random_state=0).fit(data_array)
 centers = kmeans_model.cluster_centers_
 labels = kmeans_model.labels_
 
-root = build_tree(data_array,labels,centers)
+root = build_tree(data_array,labels,centers,data)
 G = make_tree(root,kmeans_model.n_clusters)
 display_tree(G)
 
