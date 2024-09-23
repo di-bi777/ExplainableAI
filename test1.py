@@ -1,8 +1,10 @@
 import pandas as pd
 from sklearn.cluster import KMeans
-from sklearn.tree import DecisionTreeClassifier, plot_tree
 import matplotlib.pyplot as plt
 import numpy as np
+import queue,graphviz
+from graphviz import Digraph
+from sklearn.tree import export_graphviz,DecisionTreeClassifier
 
 class TreeNode:
     """決定木の各ノード"""
@@ -111,6 +113,45 @@ def build_tree(X,labels,centers):
     
     return node
 
+def make_tree(root,n_clusters):
+    """木を描写"""
+    G = Digraph(format='png')
+    G.attr('node', shape='circle')
+    N = 2*n_clusters - 1 #ノード数
+    
+    q = queue.Queue()
+    q.put(root)
+    if(root.right.cluster != None):
+        G.node(str(0),"X_{} > {}".format(root.condition[0],root.condition[1]))
+    else:
+        G.node(str(0),"X_{} <= {}".format(root.condition[0],root.condition[1]))
+    i=1
+    while not q.empty():
+        root = q.get()
+
+        if root.left.cluster != None and root.right.cluster != None:
+            G.node(str(i), str(root.left.cluster))
+            G.edge(str(i-1), str(i),label='True')
+            G.node(str(i+1), str(root.right.cluster))
+            G.edge(str(i-1), str(i+1),label='False')      
+        elif root.right.cluster != None:
+            G.node(str(i), str(root.right.cluster))
+            G.edge(str(i-1), str(i),label='True')
+            G.node(str(i+1),"X_{} <= {}".format(root.left.condition[0],root.left.condition[1]))
+            G.edge(str(i-1), str(i+1),label='False')
+            q.put(root.left)
+        else:
+            G.node(str(i), str(root.left.cluster))
+            G.edge(str(i-1), str(i),label='True')
+            G.node(str(i+1),"X_{} <= {}".format(root.right.condition[0],root.right.condition[1]))
+            G.edge(str(i-1), str(i+1),label='False')
+            q.put(root.right)       
+            i+=2
+    return G
+
+def display_tree(G):
+    """グラフを表示"""
+    G.render('tree', view=True)
 
 # Kaggleの「Mall Customers」データセットを読み込む
 file_path = 'C:\\Users\\FujimotoD\\OneDrive\\documents\\intern\\ExplanableAI\\Mall_Customers.csv'
@@ -131,14 +172,19 @@ data_array = np.array([data['Genre'].tolist(),
 data_array = data_array.T
 
 # KMeansクラスタリングを適用する
-kmeans = KMeans(n_clusters=5, random_state=0)
-clusters = kmeans.fit_predict(data_array)
+kmeans_model = KMeans(n_clusters=5, random_state=0).fit(data_array)
 
+centers = kmeans_model.cluster_centers_
+labels = kmeans_model.labels_
+
+root = build_tree(data_array,labels,centers)
+G = make_tree(root,kmeans_model.n_clusters)
+display_tree(G)
+
+"""
 # クラスタリング結果をデータフレームに追加する
 data['Cluster'] = clusters
-
-
-
+"""
 """
 # クラスタリング結果を近似するための決定木の訓練
 tree = DecisionTreeClassifier(max_leaf_nodes=4, random_state=0)
