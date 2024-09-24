@@ -9,8 +9,7 @@ from collections import Counter
 
 class TreeNode:
     """決定木の各ノード"""
-    def __init__(self, cluster=None, left=None, right=None, condition=None, labels = None):
-        self.cluster = cluster
+    def __init__(self, left=None, right=None, condition=None, labels = None):
         self.left = left
         self.right = right 
         self.condition = (0,0) #(i,threshold) x_i <= threshold  or  x_i > threshold 
@@ -98,7 +97,7 @@ def build_tree(X,labels,centers,df):
     r=[]
     
     if(len(np.unique(labels))==1):#クラスターが一つの時
-        node.cluster = labels[0]
+        node.labels = labels
         return node
 
     for i in range(X.shape[1]):#各特徴量についてループ
@@ -120,33 +119,61 @@ def build_tree(X,labels,centers,df):
     
     return node
 
-def make_tree(root,n_clusters):
-    """木を描写"""
-    G = Digraph(format='png')
-    G.attr('node', shape='circle')
-    N = 2*n_clusters - 1 #ノード数
-    
-    q = queue.Queue()
-    q.put(root)
-    
-    if(root.right.cluster != None):
-        G.node(str(0),"{} > {}".format(root.condition[0],root.condition[1]))
-    else:
-        G.node(str(0),"{} <= {}".format(root.condition[0],root.condition[1]))
-    i=1
-    j = 0
-    while not q.empty():
-        root = q.get()
-        print(j)
-        print(root.left.cluster)
-        print(root.right.cluster)
-        j += 1
+def assign_leaf_to_cluster(node):
+    counter = Counter(node.labels)
+    most_common_label = counter.most_common(1)[0][0]
+    return most_common_label
 
-        if root.left.cluster != None and root.right.cluster != None:
-            G.node(str(i), str(root.left.cluster))
-            G.edge(str(i-1), str(i),label='True')
-            G.node(str(i+1), str(root.right.cluster))
-            G.edge(str(i-1), str(i+1),label='False')    
+def visualize_tree(node,G=None, id=0):
+    """木を描写"""
+    if G is None:
+        G = Digraph(format='png')
+        G.attr('node', shape='circle')
+        
+    if node.left or node.right:
+        G.node(str(id), "{} <= {}".format(node.condition[0],node.condition[1]))
+    else:
+        most_common_label = assign_leaf_to_cluster(node)
+        G.node(str(id), str(most_common_label))
+        
+    if node.left:
+        left_id = id * 2 + 1
+        G.edge(str(id), str(left_id))
+        visualize_tree(node.left, G, left_id)
+
+    if node.right:
+        right_id = id * 2 + 2
+        G.edge(str(id), str(right_id))
+        visualize_tree(node.right, G, right_id)
+
+    return G
+    
+    
+""" 
+    
+    while not q.empty():
+        node = q.get()
+        if node.left == None and node.right == None:
+            most_common_label = assign_leaf_to_cluster(node)
+            G.node(str(i), str(most_common_label))
+        else:
+            if node.left != None and node.right != None:
+                G.node(str(i),"{} <= {}".format(node.condition[0],node.condition[1]))
+            if node.left != None:
+                G.edge(str(i), str(2*i+1),label='True')
+                q.put(node.left)
+                i = 2*i+1
+            elif node.right != None:
+                G.edge(str(i), str(2*i+2),label='False')
+                q.put(node.right)
+                i = 2*i+2
+            
+            
+            
+            
+                        
+            G.edge(str(i-1), str(i+1),label='False')
+            i += 1   
         elif root.right.cluster != None:
             G.node(str(i), str(root.right.cluster))
             G.edge(str(i-1), str(i),label='True')
@@ -161,11 +188,7 @@ def make_tree(root,n_clusters):
             q.put(root.right)       
             i+=2
     return G
-
-def assign_leaf_to_cluster(node):
-    counter = Counter(node.labels)
-    most_common_label = counter.most_common(1)[0][0]
-    return most_common_label
+"""
 
 def display_tree(G):
     """グラフを表示"""
@@ -197,7 +220,7 @@ centers = kmeans_model.cluster_centers_
 labels = kmeans_model.labels_
 
 root = build_tree(data_array,labels,centers,data)
-G = make_tree(root,kmeans_model.n_clusters)
+G = visualize_tree(root)
 display_tree(G)
 
 """
