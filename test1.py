@@ -2,18 +2,18 @@ import pandas as pd
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import numpy as np
-import queue
 from graphviz import Digraph
 from sklearn.tree import export_graphviz,DecisionTreeClassifier
 from collections import Counter
 
 class TreeNode:
     """決定木の各ノード"""
-    def __init__(self, left=None, right=None, condition=None, labels = None):
+    def __init__(self, left=None, right=None, condition=None, labels = None, miss = None):
         self.left = left
         self.right = right 
         self.condition = (0,0) #(i,threshold) x_i <= threshold  or  x_i > threshold 
         self.labels = labels
+        self.miss = miss
 
 def minimum_center(i,labels,centers):
     """指定された特徴量iに対するクラスタ中心の最小値を計算"""
@@ -88,7 +88,7 @@ def get_best_splits(X,l,r,labels,centers):
                 bests_split['coordinate'] = i
                 bests_split['threshold'] = x[i]   
     print("num of mistakes at this node => {}".format(bests_split['mistake']))
-    return bests_split['coordinate'],bests_split['threshold']
+    return bests_split['coordinate'],bests_split['threshold'],bests_split['mistake']
 
 def build_tree(X,labels,centers,df):
     """再帰的に決定木を構築"""
@@ -104,7 +104,7 @@ def build_tree(X,labels,centers,df):
         l.append(minimum_center(i,labels,centers))
         r.append(maximum_center(i,labels,centers))
 
-    i,threshold = get_best_splits(X,l,r,labels,centers)
+    i,threshold,miss = get_best_splits(X,l,r,labels,centers)
     X,labels = delete_mistakes_data(X,labels,centers,i,threshold)
     left_data,left_labels,right_data,right_labels = make_next_data(X,labels,i,threshold)
     
@@ -114,6 +114,7 @@ def build_tree(X,labels,centers,df):
     
     node.condition = (i,threshold)
     node.labels = labels
+    node.miss = miss
     node.left = build_tree(left_data,left_labels,centers,df)
     node.right = build_tree(right_data,right_labels,centers,df)
     
@@ -131,64 +132,22 @@ def visualize_tree(node,G=None, id=0):
         G.attr('node', shape='circle')
         
     if node.left or node.right:
-        G.node(str(id), "{} <= {}".format(node.condition[0],node.condition[1]))
+        G.node(str(id), "{} <= {}\nnum of mistakes at this node =>{}".format(node.condition[0],node.condition[1],node.miss))
     else:
         most_common_label = assign_leaf_to_cluster(node)
         G.node(str(id), str(most_common_label))
         
     if node.left:
         left_id = id * 2 + 1
-        G.edge(str(id), str(left_id))
+        G.edge(str(id), str(left_id),label="True")
         visualize_tree(node.left, G, left_id)
 
     if node.right:
         right_id = id * 2 + 2
-        G.edge(str(id), str(right_id))
+        G.edge(str(id), str(right_id),label="False")
         visualize_tree(node.right, G, right_id)
 
     return G
-    
-    
-""" 
-    
-    while not q.empty():
-        node = q.get()
-        if node.left == None and node.right == None:
-            most_common_label = assign_leaf_to_cluster(node)
-            G.node(str(i), str(most_common_label))
-        else:
-            if node.left != None and node.right != None:
-                G.node(str(i),"{} <= {}".format(node.condition[0],node.condition[1]))
-            if node.left != None:
-                G.edge(str(i), str(2*i+1),label='True')
-                q.put(node.left)
-                i = 2*i+1
-            elif node.right != None:
-                G.edge(str(i), str(2*i+2),label='False')
-                q.put(node.right)
-                i = 2*i+2
-            
-            
-            
-            
-                        
-            G.edge(str(i-1), str(i+1),label='False')
-            i += 1   
-        elif root.right.cluster != None:
-            G.node(str(i), str(root.right.cluster))
-            G.edge(str(i-1), str(i),label='True')
-            G.node(str(i+1),"{} <= {}".format(root.left.condition[0],root.left.condition[1]))
-            G.edge(str(i-1), str(i+1),label='False')
-            q.put(root.left)
-        else:
-            G.node(str(i), str(root.left.cluster))
-            G.edge(str(i-1), str(i),label='True')
-            G.node(str(i+1),"{} <= {}".format(root.right.condition[0],root.right.condition[1]))
-            G.edge(str(i-1), str(i+1),label='False')
-            q.put(root.right)       
-            i+=2
-    return G
-"""
 
 def display_tree(G):
     """グラフを表示"""
