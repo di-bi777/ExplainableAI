@@ -3,17 +3,17 @@ import pandas as pd
 from sklearn.cluster import KMeans
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
-import matplotlib.pyplot as plt
 from graphviz import Digraph
 from collections import Counter
 
 class TreeNode:
     """決定木の各ノード"""
-    def __init__(self, left=None, right=None, condition=None, labels = None):
+    def __init__(self, left=None, right=None, condition=None, labels = None, miss=None):
         self.left = left
         self.right = right 
         self.condition = (0,0) #(i,threshold) x_i <= threshold  or  x_i > threshold 
         self.labels = labels
+        self.miss = miss
 
 def minimum_center(i,labels,centers):
     """指定された特徴量iに対するクラスタ中心の最小値を計算"""
@@ -81,14 +81,14 @@ def get_best_splits(X,l,r,labels,centers):
             if(l[i]>x[i] or x[i]>=r[i]):
                 continue
                 
-            cnt_mistakes = count_mistakes(X,x,i,labels,centers) #ここで本来はDPでより効率よく計算すべきだが，やり方がよくわからない．なのでナイーブなやり方でやっている．つまり，全データに対してその分割でmistakeとなるのか否かを調べている
+            cnt_mistakes = count_mistakes(X,x,i,labels,centers) 
             
             if bests_split['mistake'] > cnt_mistakes:
                 bests_split['mistake'] = cnt_mistakes
                 bests_split['coordinate'] = i
                 bests_split['threshold'] = x[i]   
-    print("num of mistakes at this node => {}".format(bests_split['mistake']))
-    return bests_split['coordinate'],bests_split['threshold']
+    
+    return bests_split['coordinate'],bests_split['threshold'],bests_split['mistake']
 
 def build_tree(X,labels,centers,df):
     """再帰的に決定木を構築"""
@@ -104,7 +104,7 @@ def build_tree(X,labels,centers,df):
         l.append(minimum_center(i,labels,centers))
         r.append(maximum_center(i,labels,centers))
 
-    i,threshold = get_best_splits(X,l,r,labels,centers)
+    i,threshold,miss = get_best_splits(X,l,r,labels,centers)
     X,labels = delete_mistakes_data(X,labels,centers,i,threshold)
     left_data,left_labels,right_data,right_labels = make_next_data(X,labels,i,threshold)
     
@@ -113,6 +113,7 @@ def build_tree(X,labels,centers,df):
     i = column_names[i]
     
     node.condition = (i,threshold)
+    node.miss = miss
     node.labels = labels
     node.left = build_tree(left_data,left_labels,centers,df)
     node.right = build_tree(right_data,right_labels,centers,df)
@@ -131,7 +132,7 @@ def visualize_tree(node,G=None, id=0):
         G.attr('node', shape='circle')
         
     if node.left or node.right:
-        G.node(str(id), "{} <= {}".format(node.condition[0],node.condition[1]))
+        G.node(str(id), "{} <= {}\nnum of mistakes at this node =>{}".format(node.condition[0],node.condition[1],node.miss))
     else:
         most_common_label = assign_leaf_to_cluster(node)
         G.node(str(id), str(most_common_label))
