@@ -133,7 +133,8 @@ def assign_leaf_to_cluster(node):
     most_common_label = counter.most_common(1)[0][0]
     return most_common_label
 
-def create_histogram(node, i, threshold, filename,columns):
+
+def create_histogram(node, i, threshold, id, columns):
     """各ノードのヒストグラムを作る"""
 
     # numpy配列をデータフレームに変換
@@ -141,27 +142,63 @@ def create_histogram(node, i, threshold, filename,columns):
     updated_array = np.column_stack((node.data, new_column_array))
     df = pd.DataFrame(updated_array, columns=columns)
     
-    # データを分割
-    df['category'] = df[i].apply(lambda z: 'True' if z <= threshold else 'False')
-    # カテゴリごとのグループ別カウント
-    grouped = df.groupby(['category', 'Cluster']).size().unstack(fill_value=0)
-    ax = grouped.plot(kind='bar', stacked=True)
-    plt.ylabel('Count')
-    plt.title('{} <= {}'.format(i,threshold))
-    plt.legend(title='Cluster')
-    plt.savefig(filename)
+    # プロットの設定
+    fig, ax = plt.subplots(figsize=(4, 3))
+    
+    # クラスターごとの一貫した色を定義
+    n_clusters = len(df['Cluster'].unique())
+    colors = plt.cm.get_cmap('tab10')(np.linspace(0, 1, n_clusters))
+    cluster_colors = {cluster: colors[i] for i, cluster in enumerate(sorted(df['Cluster'].unique()))}
+    
+    # ビンの範囲を設定
+    bins = np.linspace(df[i].min(), df[i].max(), 21)
+    
+    # クラスターごとにヒストグラムを描画
+    n, bins, patches = ax.hist([df[df['Cluster'] == cluster][i] for cluster in sorted(df['Cluster'].unique())],
+                               bins=bins, stacked=True, 
+                               color=[cluster_colors[cluster] for cluster in sorted(df['Cluster'].unique())],
+                               alpha=0.7, edgecolor='black', linewidth=0.5,
+                               label=[f'Cluster {cluster}' for cluster in sorted(df['Cluster'].unique())])
+    
+    # 閾値を示す垂直線
+    ax.axvline(x=threshold, color='red', linestyle='--', linewidth=1, label='Threshold')
+    
+    # グラフの装飾
+    ax.set_xlabel(i)
+    ax.set_ylabel('Frequency')
+    ax.set_title(f'{i} <= {threshold}\nnum of mistake = {node.miss}')
+    
+    # 凡例
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    # グリッド線を追加
+    ax.grid(True, linestyle='--', alpha=0.7)
+    
+    # グラフを保存
+    plt.tight_layout()
+    filename = f'node_{id}.png'
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.close()
+    return filename
 
-def visualize_tree(node,G=None,id=0,i=0):
+def visualize_tree(node, columns, G=None, id=0, i=0):
     """木を描写"""
-    i += 1
+    
     if G is None:
         G = Digraph(format='png')
-        G.attr('node', shape='circle', fontname='Helvetica', fixedsize=True)
+        G.attr('node', shape='circle', fontname='Helvetica',fixedsize = "true", width='1.5', height='1.5')
         G.attr('edge', color='gray', fontname='Helvetica')
-        
+    
+    current_i = i
+    
     if node.left or node.right:
-        G.node(str(id), "{}<={}\nnum of mistakes at this node = {}".format(node.condition[0],node.condition[1],node.miss), image="file{}.png".format(i))
+        current_i += 1
+        hist_file = create_histogram(node, node.condition[0], node.condition[1], id, columns)
+        G.node(str(id), f'Split{current_i}')
+        st.write(f"Split{current_i}: {node.condition[0]}<={node.condition[1]}\nnum of mistake at this node = {node.miss}")
+        expander = st.expander(f"More information of Split{current_i}")
+        with expander:
+            st.image(hist_file, use_column_width=True)
         
     else:
         most_common_label = assign_leaf_to_cluster(node)
@@ -169,15 +206,15 @@ def visualize_tree(node,G=None,id=0,i=0):
         
     if node.left:
         left_id = id * 2 + 1
-        G.edge(str(id), str(left_id),label="True")
-        visualize_tree(node.left, G, left_id,i)
+        G.edge(str(id), str(left_id), label="True")
+        current_i, G = visualize_tree(node.left, columns, G, left_id, current_i)
 
     if node.right:
         right_id = id * 2 + 2
-        G.edge(str(id), str(right_id),label="False")
-        visualize_tree(node.right, G, right_id,i)
+        G.edge(str(id), str(right_id), label="False")
+        current_i, G = visualize_tree(node.right, columns, G, right_id, current_i)
 
-    return G
+    return current_i, G
 
 
 
@@ -268,9 +305,13 @@ if csv_file is not None:
             # クラスタリング結果を表示
             st.write("クラスタリング結果") 
             st.pyplot(fig)
+            # クラスタリング結果をデータフレームに追加
+            clustered_df = df.copy()
+            clustered_df['Cluster'] = labels
             
             # 決定木による近似結果を表示
             st.write("クラスタリングの説明（決定木による近似結果）")
             root = build_tree(data_array,labels,centers_original_unscaled,df)
-            G = visualize_tree(root)    
+            total_split, G = visualize_tree(root,clustered_df.columns)    
             st.graphviz_chart(G.source)
+            
