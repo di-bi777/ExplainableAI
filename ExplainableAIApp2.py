@@ -146,9 +146,8 @@ def create_histogram(node, i, threshold, id, columns):
     fig, ax = plt.subplots(figsize=(4, 3))
     
     # クラスターごとの一貫した色を定義
-    n_clusters = len(df['Cluster'].unique())
-    colors = plt.cm.get_cmap('tab10')(np.linspace(0, 1, n_clusters))
-    cluster_colors = {cluster: colors[i] for i, cluster in enumerate(sorted(df['Cluster'].unique()))}
+    colors = ['#FEFEBB', '#c7e9b4', '#41b6c4', '#74add1', '#4575b4', '#313695', '#fee090', '#fdae61', '#f46d43', '#d73027']
+    cluster_colors = {cluster: colors[np.int_(cluster)] for cluster in sorted(df['Cluster'].unique())}
     
     # ビンの範囲を設定
     bins = np.linspace(df[i].min(), df[i].max(), 21)
@@ -195,7 +194,7 @@ def visualize_tree(node, columns, G=None, id=0, i=0):
         current_i += 1
         hist_file = create_histogram(node, node.condition[0], node.condition[1], id, columns)
         G.node(str(id), f'Split{current_i}')
-        st.write(f"Split{current_i}: {node.condition[0]}<={node.condition[1]}\nnum of mistake at this node = {node.miss}")
+        st.write(f"Split{current_i}: {node.condition[0]}<={node.condition[1]}, num of mistake at this node = {node.miss}")
         expander = st.expander(f"More information of Split{current_i}")
         with expander:
             st.image(hist_file, use_column_width=True)
