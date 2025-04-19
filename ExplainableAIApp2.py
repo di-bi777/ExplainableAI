@@ -235,7 +235,7 @@ if csv_file is not None:
         st.markdown("<br>", unsafe_allow_html=True)
         
         # クラスタ数の入力
-        n_clusters = st.number_input("クラスタ数を入力してください", min_value=2, max_value=10, value=3, step=1)
+        n_clusters = st.number_input("クラスタリングを行う際のクラスタ数を入力してください", min_value=2, max_value=10, value=3, step=1)
         st.markdown("<br>", unsafe_allow_html=True)
         st.write("PCA及びUMAPで次元削減を行います")
         # 元のデータの次元数を表示
