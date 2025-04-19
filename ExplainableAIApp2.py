@@ -197,7 +197,7 @@ def visualize_tree(node, columns, G=None, id=0, i=0):
         st.write(f"Split{current_i}: {node.condition[0]}<={node.condition[1]}, num of mistake at this node = {node.miss}")
         expander = st.expander(f"More information of Split{current_i}")
         with expander:
-            st.image(hist_file, use_column_width=True)
+            st.image(hist_file, use_container_width=True)
         
     else:
         most_common_label = assign_leaf_to_cluster(node)

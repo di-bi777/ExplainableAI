@@ -6,12 +6,29 @@ A Python-based project that implements explainable AI techniques by approximatin
 
 This project focuses on making clustering results more interpretable by using decision trees to approximate the clustering outcomes. This approach provides a more transparent and understandable way to explain how the clustering algorithm makes its decisions.
 
+The project includes two main applications:
+
+1. **ExplainableAI.py**: A basic implementation that approximates K-means clustering results with a decision tree to gain insights into the characteristics of each cluster.
+
+2. **ExplainableAI2.py**: An advanced implementation that approximates clustering data after dimensionality reduction (using PCA and UMAP) with a decision tree that branches using the original features. This helps visualize and explain why data was divided in a particular way after dimensionality reduction, making the characteristics of each cluster more interpretable.
+
 ## Features
 
-- Clustering analysis using various algorithms
+### ExplainableAI.py
+- K-means clustering with customizable number of clusters
+- Feature selection for clustering
 - Decision tree approximation of clustering results
-- Visualization of clustering and decision tree results
-- Interpretable explanations of clustering decisions
+- Visualization of the decision tree structure
+
+
+### ExplainableAI2.py
+- K-means clustering with customizable number of clusters
+- PCA dimensionality reduction with configurable components
+- UMAP dimensionality reduction (2D or 3D visualization)
+- Decision tree approximation using original features
+- Visualization of clustering results in reduced dimensions
+- Histogram visualization of feature distributions at each decision node
+- Interactive Streamlit interface for data upload and parameter adjustment
 
 ## Requirements
 
@@ -22,6 +39,9 @@ This project focuses on making clustering results more interpretable by using de
   - numpy
   - matplotlib
   - seaborn
+  - graphviz
+  - umap-learn
+  - streamlit
 
 ## Installation
 
@@ -38,32 +58,41 @@ pip install -r requirements.txt
 
 ## Usage
 
-1. Import the necessary modules:
-```python
-from ExplanableAI import clustering, decision_tree
+### Running ExplainableAI.py
+```bash
+streamlit run ExplanableAI/ExplainableAI.py
 ```
 
-2. Run clustering analysis:
-```python
-# Your clustering code here
+### Running ExplainableAI2.py
+```bash
+streamlit run ExplanableAI/ExplainableAI2.py
 ```
 
-3. Generate decision tree approximation:
-```python
-# Your decision tree code here
-```
+### Example Datasets
 
-## Project Structure
+The repository includes two example datasets that you can use to test the applications:
 
-```
-ExplanableAI/
-├── README.md
-├── requirements.txt
-├── ExplanableAI/
-│   ├── __init__.py
-│   ├── clustering.py
-│   ├── decision_tree.py
-│   └── visualization.py
-└── tests/
-    └── test_explanable.py
+1. **wine_data.csv**: A dataset containing various chemical properties of wines. This dataset is useful for testing clustering on numerical data with multiple features.
+
+2. **Mall_Customers.csv**: A dataset containing customer information including age, annual income, and spending score. This dataset is useful for testing clustering on customer segmentation data.
+
+To use these datasets, simply upload them when prompted by the application.
+
+## How It Works
+
+1. **Data Preparation**: Upload a CSV file with your data.
+
+2. **Clustering**:
+   - ExplainableAI.py: Select features and perform K-means clustering directly on the data.
+   - ExplainableAI2.py: Perform PCA and UMAP dimensionality reduction before K-means clustering.
+
+3. **Decision Tree Approximation**: 
+   - The clustering results are approximated using a decision tree that branches based on the original features.
+   - This helps understand which features are most important for distinguishing between clusters.
+
+4. **Visualization**:
+   - The decision tree structure is visualized using Graphviz.
+   - ExplainableAI2.py also provides histograms of feature distributions at each decision node.
+
+
 ```
