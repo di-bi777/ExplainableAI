@@ -93,6 +93,3 @@ To use these datasets, simply upload them when prompted by the application.
 4. **Visualization**:
    - The decision tree structure is visualized using Graphviz.
    - ExplainableAI2.py also provides histograms of feature distributions at each decision node.
-
-
-```
